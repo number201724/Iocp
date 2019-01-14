@@ -18,7 +18,11 @@ static unsigned __stdcall IocpWorkerThread( void *argument )
 
 	while ( TRUE )
 	{
-		fStatus = GetQueuedCompletionStatus( ghIocp, &dwNumberOfBytesTransferred, &lpCompletionKey, &lpOverlapped, INFINITE );
+		fStatus = GetQueuedCompletionStatus( ghIocp,
+											 &dwNumberOfBytesTransferred,
+											 &lpCompletionKey,
+											 &lpOverlapped,
+											 INFINITE );
 
 		//handle exit iocp request
 		if ( lpCompletionKey == NULL )
@@ -40,7 +44,7 @@ static unsigned __stdcall IocpWorkerThread( void *argument )
 
 BOOLEAN IocpInitHandle( IocpHandle *lpHandle, HANDLE hIocp, HANDLE hHandle, IocpHandler_t lpHandler )
 {
-	if ( CreateIoCompletionPort( hHandle, hIocp, (ULONG_PTR)lpHandle, 0 ) )
+	if ( CreateIoCompletionPort( hHandle, hIocp, (ULONG_PTR)lpHandle, 0 ) != NULL )
 	{
 		InitializeCriticalSectionAndSpinCount( &lpHandle->cs, 4000 );
 
@@ -50,13 +54,17 @@ BOOLEAN IocpInitHandle( IocpHandle *lpHandle, HANDLE hIocp, HANDLE hHandle, Iocp
 
 		InitializeMPListEntry( &lpHandle->Operations );
 
+		EnterCriticalSection( &gIocpCriticalSection );
+		MPListInsertToTail( &gIocpHandles, &lpHandle->Entry );
+		LeaveCriticalSection( &gIocpCriticalSection );
+
 		return TRUE;
 	}
 
 	return FALSE;
 }
 
-VOID IocpCloseHandle( IocpHandle *lpHandle )
+BOOLEAN IocpCloseHandle( IocpHandle *lpHandle )
 {
 	BOOL fClosed = FALSE;
 	EnterCriticalSection( &lpHandle->cs );
@@ -70,13 +78,20 @@ VOID IocpCloseHandle( IocpHandle *lpHandle )
 			fClosed = TRUE;
 		}
 	}
-	
+
 	LeaveCriticalSection( &lpHandle->cs );
 
 	if ( fClosed )
 	{
+		EnterCriticalSection( &gIocpCriticalSection );
+		MPRemoveEntryList( &lpHandle->Entry );
+		LeaveCriticalSection( &gIocpCriticalSection );
+
 		DeleteCriticalSection( &lpHandle->cs );
+		return TRUE;
 	}
+
+	return FALSE;
 }
 
 VOID IocpAddOperation( IocpHandle *lpHandle, IocpOperation *lpOperation )

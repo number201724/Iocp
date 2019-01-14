@@ -26,7 +26,7 @@ struct IocpOperation
 	IocpHandle
 */
 BOOLEAN IocpInitHandle( IocpHandle *lpHandle, HANDLE hIocp, HANDLE hHandle, IocpHandler_t lpHandler );
-VOID IocpCloseHandle( IocpHandle *lpHandle );
+BOOLEAN IocpCloseHandle( IocpHandle *lpHandle );
 VOID IocpAddOperation( IocpHandle *lpHandle, IocpOperation *lpOperation );
 VOID IocpDelOperation( IocpHandle *lpHandle, IocpOperation *lpOperation );
 
@@ -36,3 +36,6 @@ VOID IocpDelOperation( IocpHandle *lpHandle, IocpOperation *lpOperation );
 */
 BOOLEAN IocpStarup( int nNumThreads );
 VOID IocpShutdown( );
+
+
+extern HANDLE ghIocp;
